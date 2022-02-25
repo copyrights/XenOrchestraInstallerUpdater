@@ -1,11 +1,11 @@
 #!/bin/bash
 # shellcheck disable=SC2155,SC2207,SC2015
 
-#########################################################################
-# Title: XenOrchestraInstallerUpdater                                   #
-# Author: Roni Väyrynen                                                 #
-# Repository: https://github.com/ronivay/XenOrchestraInstallerUpdater   #
-#########################################################################
+###########################################################################
+# Title: XenOrchestraInstallerUpdater                                     #
+# Author: Roni Väyrynen, Lance Fogle	                                  #
+# Repository: https://github.com/OnyxFireInc/XenOrchestraInstallerUpdater #
+###########################################################################
 
 SCRIPT_DIR="$(dirname "$0")"
 SAMPLE_CONFIG_FILE="$SCRIPT_DIR/sample.xo-install.cfg"
@@ -89,6 +89,15 @@ function CheckUser {
 
 }
 
+# Custom script changes
+function CustomChanges {
+    echo
+    printprog "Disabling open-source warning and banner"
+    runcmd "/usr/bin/sed -i \"s/dismissedSourceBanner: Boolean(cookies.get('dismissedSourceBanner'))/dismissedSourceBanner: true/\" $INSTALLDIR/xo-builds/xen-orchestra-$TIME/packages/xo-web/src/xo-app/index.js"
+    runcmd "/usr/bin/sed -i \"s/this.displayOpenSourceDisclaimer()/console.log('Disclaimer disabled')/\" $INSTALLDIR/xo-builds/xen-orchestra-$TIME/packages/xo-web/src/xo-app/index.js"
+    printok "Disabling open-source warning and banner"
+}
+
 # script self upgrade
 function SelfUpgrade {
 
@@ -100,7 +109,7 @@ function SelfUpgrade {
 
     if [[ -d "$SCRIPT_DIR/.git" ]] && [[ -n $(runcmd_stdout "command -v git") ]]; then
         local REMOTE="$(runcmd_stdout "cd $SCRIPT_DIR && git config --get remote.origin.url")"
-        if [[ "$REMOTE" == *"ronivay/XenOrchestraInstallerUpdater"* ]]; then
+        if [[ "$REMOTE" == *"OnyxFireInc/XenOrchestraInstallerUpdater"* ]]; then
             if [[ -n $(runcmd_stdout "cd $SCRIPT_DIR && git status --porcelain") ]]; then
                 printfail "Local changes in this script directory. Not attempting to self upgrade"
                 return 0
@@ -680,6 +689,9 @@ function InstallXO {
     # Fetch 3rd party plugins source code
     InstallAdditionalXOPlugins
 
+    # Custom Changes
+    CustomChanges
+
     echo
     printinfo "xo-server and xo-web build takes quite a while. Grab a cup of coffee and lay back"
     echo
@@ -800,7 +812,6 @@ function InstallXO {
         runcmd "chown -R $XOUSER:$XOUSER /var/lib/xo-server"
 
         runcmd "chown -R $XOUSER:$XOUSER $CONFIGPATH/.config/xo-server"
-
     fi
 
     echo
@@ -873,7 +884,7 @@ function VerifyServiceStart {
         echo "" >>"$LOGFILE"
         runcmd "journalctl --since '$LOGTIME' -u $XO_SVC >> $LOGFILE"
         echo
-        echo "Control $SERVICE service with systemctl for stop/start/restart etc."
+        echo "Control $XO_SVC service with systemctl for stop/start/restart etc."
         exit 1
     fi
 
